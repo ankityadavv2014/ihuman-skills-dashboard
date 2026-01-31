@@ -1,8 +1,8 @@
 # Skill Catalog
 
-Generated at: 2026-01-30T19:35:13.007Z
+Generated at: 2026-01-31T07:34:21.497Z
 
-Total skills: 617
+Total skills: 618
 
 ## architecture (58)
 
@@ -109,7 +109,7 @@ Total skills: 617
 | `startup-financial-modeling` | This skill should be used when the user asks to "create financial projections", "build a financial model", "forecast revenue", "calculate burn rate", "estima... | startup, financial, modeling | startup, financial, modeling, skill, should, used, user, asks, projections, model, forecast, revenue |
 | `team-composition-analysis` | This skill should be used when the user asks to "plan team structure", "determine hiring needs", "design org chart", "calculate compensation", "plan equity a... | team, composition | team, composition, analysis, skill, should, used, user, asks, plan, structure, determine, hiring |
 
-## data-ai (92)
+## data-ai (93)
 
 | Skill | Description | Tags | Triggers |
 | --- | --- | --- | --- |
@@ -192,6 +192,7 @@ Total skills: 617
 | `spark-optimization` | Optimize Apache Spark jobs with partitioning, caching, shuffle optimization, and memory tuning. Use when improving Spark performance, debugging slow jobs, or... | spark, optimization | spark, optimization, optimize, apache, jobs, partitioning, caching, shuffle, memory, tuning, improving, performance |
 | `sql-optimization-patterns` | Master SQL query optimization, indexing strategies, and EXPLAIN analysis to dramatically improve database performance and eliminate slow queries. Use when de... | sql, optimization | sql, optimization, query, indexing, explain, analysis, dramatically, improve, database, performance, eliminate, slow |
 | `sqlmap-database-pentesting` | This skill should be used when the user asks to "automate SQL injection testing," "enumerate database structure," "extract database credentials using sqlmap,... | sqlmap, database, pentesting | sqlmap, database, pentesting, penetration, testing, skill, should, used, user, asks, automate, sql |
+| `stitch-ui-design` | Expert guide for creating effective prompts for Google Stitch AI UI design tool. Use when user wants to design UI/UX in Stitch, create app interfaces, genera... | stitch, ui | stitch, ui, creating, effective, prompts, google, ai, user, wants, ux, app, interfaces |
 | `tdd-orchestrator` | Master TDD orchestrator specializing in red-green-refactor discipline, multi-agent workflow coordination, and comprehensive test-driven development practices... | tdd, orchestrator | tdd, orchestrator, specializing, red, green, refactor, discipline, multi, agent, coordination, test, driven |
 | `team-collaboration-standup-notes` | You are an expert team communication specialist focused on async-first standup practices, AI-assisted note generation from commit history, and effective remo... | team, collaboration, standup, notes | team, collaboration, standup, notes, communication, async, first, ai, assisted, note, generation, commit |
 | `telegram-bot-builder` | Expert in building Telegram bots that solve real problems - from simple automation to complex AI-powered bots. Covers bot architecture, the Telegram Bot API,... | telegram, bot, builder | telegram, bot, builder, building, bots, solve, real, problems, simple, automation, complex, ai |
