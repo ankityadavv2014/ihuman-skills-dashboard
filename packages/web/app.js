@@ -1,45 +1,42 @@
-// Skill descriptions
-const skillDescriptions = {
-    'react-setup': 'Setup a modern React project with TypeScript and tooling',
-    'typescript-config': 'Configure TypeScript with best practices',
-    'api-design': 'Design REST APIs following best practices',
-    'security-audit': 'Run comprehensive security audit on your project',
-    'docker-setup': 'Setup Docker for your application',
-    'ci-cd-setup': 'Configure CI/CD pipeline',
-    'testing-strategy': 'Setup comprehensive testing strategy',
-    'performance-optimization': 'Optimize application performance'
-};
+// Global State
+let currentSkill = null;
+let currentSkillMetadata = null;
+let skillParametersUI = {};
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    loadSkills();
+    loadSkillsAndMetadata();
     initializeEventListeners();
 });
 
-async function loadSkills() {
+// Load all skills from repository
+async function loadSkillsAndMetadata() {
     try {
-        const response = await fetch('/api/agency/skills');
+        // Get skill metadata
+        const response = await fetch('/api/skill-metadata');
         const data = await response.json();
         
         if (data.skills && data.skills.length > 0) {
             const skillsList = document.querySelector('.skills-sidebar ul');
             if (skillsList) {
-                // Clear existing skills
                 skillsList.innerHTML = '';
                 
-                // Add loaded skills
-                data.skills.forEach(skill => {
+                data.skills.forEach((skill, idx) => {
                     const li = document.createElement('li');
-                    li.className = 'skill-item';
+                    li.className = idx === 0 ? 'skill-item active' : 'skill-item';
                     li.dataset.skill = skill.id;
                     li.textContent = skill.name;
                     skillsList.appendChild(li);
                 });
                 
-                // Re-attach event listeners to new elements
                 setupSkillItemListeners();
                 
-                console.log(`✅ Loaded ${data.total} real skills from repository`);
+                // Select first skill
+                if (data.skills.length > 0) {
+                    selectSkill(skillsList.querySelector('.skill-item'), data.skills[0].id);
+                }
+                
+                console.log(`✅ Loaded ${data.skills.length} real skills`);
             }
         }
     } catch (error) {
@@ -57,6 +54,89 @@ function setupSkillItemListeners() {
 function handleSkillClick(e) {
     const skillId = e.target.dataset.skill;
     selectSkill(e.target, skillId);
+}
+
+// Select a skill and load its metadata
+async function selectSkill(element, skillId) {
+    try {
+        // Fetch metadata for this skill
+        const response = await fetch(`/api/skill-metadata?skill=${skillId}`);
+        const skillMeta = await response.json();
+        
+        currentSkill = skillId;
+        currentSkillMetadata = skillMeta;
+        
+        // Update UI
+        document.querySelectorAll('.skill-item').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+        
+        document.getElementById('skillName').textContent = skillMeta.name;
+        document.getElementById('skillDesc').textContent = skillMeta.description;
+        
+        // Clear and rebuild parameters UI
+        buildParametersUI(skillMeta);
+        
+        clearOutput();
+        addOutput(`📚 Skill selected: ${skillMeta.name}`);
+        addOutput(`Category: ${skillMeta.category}`);
+        addOutput(`Estimated time: ${skillMeta.estimatedTime}`);
+        
+    } catch (error) {
+        console.error('Error selecting skill:', error);
+    }
+}
+
+// Build dynamic parameter UI
+function buildParametersUI(skillMeta) {
+    const configPanel = document.querySelector('.config-panel');
+    
+    // Keep base fields but add skill-specific parameters
+    const paramsHtml = skillMeta.parameters.map(param => {
+        const id = `param-${param.name}`;
+        
+        if (param.type === 'text') {
+            return `
+                <div class="config-group">
+                    <label for="${id}">${param.label}</label>
+                    <input type="text" id="${id}" placeholder="${param.hint || ''}" 
+                           data-param="${param.name}" data-required="${param.required || false}">
+                </div>
+            `;
+        } else if (param.type === 'boolean') {
+            return `
+                <div class="config-group">
+                    <label>
+                        <input type="checkbox" id="${id}" data-param="${param.name}">
+                        ${param.label}
+                    </label>
+                </div>
+            `;
+        } else if (param.type === 'select') {
+            return `
+                <div class="config-group">
+                    <label for="${id}">${param.label}</label>
+                    <select id="${id}" data-param="${param.name}">
+                        ${param.options.map(opt => 
+                            `<option value="${opt}" ${opt === param.default ? 'selected' : ''}>${opt}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+            `;
+        }
+        return '';
+    }).join('');
+    
+    const existingParams = configPanel.querySelectorAll('[data-param]');
+    existingParams.forEach(el => {
+        if (el.parentElement.classList.contains('config-group')) {
+            el.parentElement.remove();
+        }
+    });
+    
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = paramsHtml;
+    const newParams = tempDiv.querySelectorAll('.config-group');
+    configPanel.appendChild(...newParams);
 }
 
 function initializeEventListeners() {
@@ -83,18 +163,10 @@ function initializeEventListeners() {
 
 // Tab Switching
 function switchTab(tabName) {
-    // Hide all tabs and views
-    document.querySelectorAll('.view').forEach(view => {
-        view.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
+    document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
 
-    // Show selected tab and view
     if (tabName === 'skills') {
         document.getElementById('skills-view').classList.add('active');
         document.getElementById('skills-tab').classList.add('active');
@@ -106,132 +178,205 @@ function switchTab(tabName) {
     }
 }
 
-// Skill Selection
-function selectSkill(element, skillId) {
-    document.querySelectorAll('.skill-item').forEach(el => {
-        el.classList.remove('active');
-    });
-    element.classList.add('active');
+// Dry Run: Validate parameters and show execution plan
+async function dryRun() {
+    if (!currentSkill || !currentSkillMetadata) {
+        addOutput('❌ Please select a skill first');
+        return;
+    }
 
-    document.getElementById('skillName').textContent = skillId.replace(/-/g, ' ');
-    document.getElementById('skillDesc').textContent = skillDescriptions[skillId] || '';
-
-    addOutput('📚 Skill selected: ' + skillId);
+    clearOutput();
+    addOutput('🧪 DRY RUN MODE - No changes will be made');
+    addOutput('');
+    
+    // Collect parameters
+    const parameters = collectParameters();
+    
+    try {
+        const response = await fetch('/api/validate-skill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                skillId: currentSkill,
+                parameters
+            })
+        });
+        
+        const validation = await response.json();
+        
+        if (!validation.valid) {
+            addOutput('❌ Validation errors:');
+            validation.errors.forEach(err => addOutput(`  • ${err}`));
+            return;
+        }
+        
+        addOutput('✅ All validations passed!');
+        addOutput('');
+        addOutput('📋 Execution Plan:');
+        addOutput('');
+        
+        if (validation.dryRunPreview) {
+            const preview = validation.dryRunPreview;
+            preview.steps.forEach((step, idx) => {
+                const icon = step.critical ? '🔴' : '⚪';
+                addOutput(`${icon} Step ${step.order}: ${step.name}`);
+            });
+            
+            addOutput('');
+            addOutput(`⏱️  Estimated total time: ${preview.estimatedTotalTime}`);
+            addOutput(`📁 Estimated output files: ${preview.estimatedOutputFiles}`);
+        }
+        
+        addOutput('');
+        addOutput('Ready to execute? Click "Execute Skill" to proceed.');
+        
+    } catch (error) {
+        console.error('Dry run error:', error);
+        addOutput(`❌ Error: ${error.message}`);
+    }
 }
 
-// Execute Skill
+// Execute Skill: Run with real streaming
 async function executeSkill() {
-    const skillName = document.getElementById('skillName').textContent;
+    if (!currentSkill || !currentSkillMetadata) {
+        addOutput('❌ Please select a skill first');
+        return;
+    }
+
+    clearOutput();
+    updateStatus('executing', 'Executing');
+    addOutput('🚀 Starting skill execution...');
+    addOutput('');
+    
+    // Collect parameters
+    const parameters = collectParameters();
     const level = document.getElementById('level').value;
     const persona = document.getElementById('persona').value;
-
-    updateStatus('executing', 'Executing');
-    clearOutput();
-    addOutput('🚀 Starting skill execution...');
-    addOutput('📝 Skill: ' + skillName);
-    addOutput('📊 Level: ' + level);
-    addOutput('👤 Persona: ' + persona);
-    addOutput('');
-
+    
     try {
-        // Call real API endpoint to execute skill with real file creation
         const response = await fetch('/api/execute-skill', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                skill: skillName,
-                level: level,
-                persona: persona
+                skillId: currentSkill,
+                parameters,
+                level,
+                persona
             })
         });
-
+        
         if (!response.ok) {
-            throw new Error('HTTP ' + response.status + ': ' + response.statusText);
+            throw new Error('HTTP ' + response.status);
         }
-
-        const data = await response.json();
-
-        if (data.error) {
-            addOutput('❌ Error: ' + data.error);
-            updateStatus('error', 'Error');
-            return;
+        
+        // Stream SSE events
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let stepCount = 0;
+        let isRunning = true;
+        
+        while (isRunning) {
+            const { done, value } = await reader.read();
+            
+            if (done) {
+                updateStatus('success', 'Success');
+                addOutput('');
+                addOutput('✅ Skill execution completed successfully!');
+                break;
+            }
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const event = JSON.parse(line.substring(6));
+                        
+                        if (event.type === 'started') {
+                            addOutput(`⏱️  Started: ${event.skillName}`);
+                            addOutput(`📊 Total steps: ${event.totalSteps}`);
+                            addOutput('');
+                        } else if (event.type === 'step_progress') {
+                            stepCount++;
+                            const progressPercent = event.progress;
+                            const progressBar = '█'.repeat(Math.floor(progressPercent / 5)) + 
+                                              '░'.repeat(20 - Math.floor(progressPercent / 5));
+                            addOutput(`[${progressBar}] ${progressPercent}% - ${event.stepName}`);
+                        } else if (event.type === 'complete') {
+                            addOutput('');
+                            addOutput(`✅ Execution ID: ${event.executionId}`);
+                            addOutput(`⏱️  Duration: ${event.duration}`);
+                            addOutput(`📁 Files created: ${event.filesCreated}`);
+                            addOutput(`📂 Output: ${event.outputDirectory}`);
+                            addOutput(`🔄 Rollback token: ${event.rollbackToken}`);
+                        }
+                    } catch (e) {
+                        // Not JSON, skip
+                    }
+                }
+            }
         }
-
-        // Show execution output
-        if (data.output) {
-            data.output.forEach(line => addOutput(line));
-        }
-
-        // Show files created
-        if (data.filesCreated && data.filesCreated.length > 0) {
-            addOutput('');
-            addOutput('📁 Files created:');
-            data.filesCreated.forEach(file => {
-                addOutput('  ✓ ' + file);
-            });
-        }
-
-        addOutput('');
-        addOutput('✅ Skill execution completed successfully!');
-        updateStatus('success', 'Success');
-
+        
     } catch (error) {
-        console.error('Error executing skill:', error);
-        addOutput('❌ Error: ' + error.message);
+        console.error('Execution error:', error);
+        addOutput(`❌ Error: ${error.message}`);
         updateStatus('error', 'Error');
     }
 }
 
-// Dry Run
-function dryRun() {
-    const skillName = document.getElementById('skillName').textContent;
-
-    updateStatus('executing', 'Executing');
-    clearOutput();
-    addOutput('🧪 DRY RUN MODE - No changes will be made');
-    addOutput('');
-    addOutput('📋 Execution Plan for: ' + skillName);
-    addOutput('');
-    addOutput('Step 1: Validate project name format');
-    addOutput('Step 2: Check Node.js and npm versions');
-    addOutput('Step 3: Create project directory');
-    addOutput('Step 4: Initialize package.json');
-    addOutput('Step 5: Install dependencies');
-    addOutput('Step 6: Setup configuration files');
-    addOutput('Step 7: Initialize git repository');
-    addOutput('');
-    addOutput('✅ Dry run completed. No changes made.');
-    updateStatus('success', 'Ready');
+// Collect all parameters from form
+function collectParameters() {
+    const params = {};
+    
+    document.querySelectorAll('[data-param]').forEach(input => {
+        const paramName = input.dataset.param;
+        
+        if (input.type === 'checkbox') {
+            params[paramName] = input.checked;
+        } else {
+            params[paramName] = input.value;
+        }
+    });
+    
+    return params;
 }
 
 // Output Management
+function clearOutput() {
+    const output = document.getElementById('output');
+    if (output) {
+        output.innerHTML = '';
+    }
+}
+
 function addOutput(text) {
     const output = document.getElementById('output');
-    output.textContent += text + '\n';
-    output.scrollTop = output.scrollHeight;
+    if (output) {
+        const line = document.createElement('div');
+        line.textContent = text;
+        line.style.marginBottom = '4px';
+        output.appendChild(line);
+        output.scrollTop = output.scrollHeight;
+    }
 }
 
-function clearOutput() {
-    document.getElementById('output').textContent = '';
+function updateStatus(statusType, statusText) {
+    const badge = document.getElementById('status');
+    if (badge) {
+        badge.className = `status-badge status-${statusType}`;
+        badge.textContent = statusText;
+    }
 }
 
-function updateStatus(type, text) {
-    const status = document.getElementById('status');
-    status.textContent = text;
-    status.className = 'status-badge status-' + type;
-}
-
-// Store current workflow in session
+// Agency Mode Functions (preserved from original)
 let currentWorkflow = null;
 let currentDecisions = {};
 
-// Agency Functions
 async function analyzeObjective() {
-    console.log('📊 analyzeObjective called');
-    const objective = document.getElementById('agencyObjective').value.trim();
-    console.log('📝 Objective:', objective);
-
-    if (!objective) {
+    const objective = document.getElementById('objective').value;
+    
+    if (!objective || objective.trim().length === 0) {
         alert('Please enter an objective');
         return;
     }
@@ -243,278 +388,150 @@ async function analyzeObjective() {
             body: JSON.stringify({ objective })
         });
 
-        const data = await response.json();
-        console.log('✅ API Response:', data);
+        const result = await response.json();
+        currentWorkflow = result.recommendedWorkflow;
 
-        if (data.error) {
-            alert('Error: ' + data.error);
-            return;
-        }
-
-        if (!data.recommendedWorkflow) {
-            alert('No matching workflow found for: "' + objective + '"\n\nTry:\n• "Build a SaaS MVP"\n• "Machine learning pipeline"\n• "DevOps infrastructure"\n• "Mobile app"\n• "Backend API"');
-            return;
-        }
-
-        // Move to phase 2
-        document.getElementById('phase1-objective').classList.remove('active');
-        document.getElementById('phase2-recommendation').classList.add('active');
-        document.getElementById('phase2-recommendation').style.display = 'block';
-
-        // Store the workflow for later use
-        currentWorkflow = data.recommendedWorkflow;
-        console.log('💾 Stored workflow:', currentWorkflow.id, currentWorkflow.name);
-
-        // Show workflow recommendation
-        document.getElementById('workflow-recommendation').style.display = 'block';
-        document.getElementById('workflow-title').textContent =
-            data.recommendedWorkflow?.name || 'Recommended Workflow';
-        document.getElementById('workflow-description').textContent =
-            data.recommendedWorkflow?.description || '';
-
-        // Show decisions - extract from all phases
-        const decisionsContainer = document.getElementById('decisions-container');
-        decisionsContainer.innerHTML = '';
-
-        let allDecisions = [];
-        if (data.recommendedWorkflow?.phases) {
-            data.recommendedWorkflow.phases.forEach(phase => {
-                console.log('📋 Phase:', phase.phase, '- Decisions:', phase.decisionPoints);
-                if (phase.decisionPoints) {
-                    allDecisions = allDecisions.concat(phase.decisionPoints);
-                }
-            });
-        }
-
-        console.log('🎯 All Decisions Found:', allDecisions.length);
-
-        if (allDecisions.length > 0) {
-            allDecisions.forEach((decision, idx) => {
-                console.log('🔧 Creating decision dropdown:', decision.question);
-                const div = document.createElement('div');
-                div.style.marginBottom = '15px';
-
-                const label = document.createElement('label');
-                label.style.display = 'block';
-                label.style.fontWeight = '600';
-                label.style.color = 'var(--text)';
-                label.style.marginBottom = '8px';
-                label.textContent = decision.question;
-                div.appendChild(label);
-
-                const select = document.createElement('select');
-                select.id = 'decision_' + idx;
-                select.style.width = '100%';
-                select.style.padding = '8px';
-                select.style.background = 'var(--bg)';
-                select.style.color = 'var(--text)';
-                select.style.border = '1px solid var(--border)';
-                select.style.borderRadius = '4px';
-
-                if (decision.options && Array.isArray(decision.options)) {
-                    decision.options.forEach(opt => {
-                        const option = document.createElement('option');
-                        option.value = opt;
-                        option.textContent = opt;
-                        select.appendChild(option);
-                    });
-                }
-
-                div.appendChild(select);
-                decisionsContainer.appendChild(div);
-            });
-        } else {
-            console.log('ℹ️ No decision points in this workflow - skipping decisions');
-            // If no decision points, show a message
-            const msg = document.createElement('p');
-            msg.style.color = 'var(--text-muted)';
-            msg.textContent = 'This workflow has no additional decisions required. Ready to start!';
-            decisionsContainer.appendChild(msg);
+        if (currentWorkflow) {
+            showPhase2(currentWorkflow);
         }
     } catch (error) {
-        console.error('Error:', error);
-        alert('Error analyzing objective: ' + error.message);
-        // Reset to phase 1 so user can try again
-        document.getElementById('phase1-objective').classList.add('active');
-        document.getElementById('phase2-recommendation').classList.remove('active');
+        console.error('Error analyzing objective:', error);
+        alert('Error analyzing objective');
     }
 }
 
+function showPhase2(workflow) {
+    document.querySelector('.agency-phase.active')?.classList.remove('active');
+    document.getElementById('phase2-recommendation').classList.add('active');
+    document.getElementById('workflowTitle').textContent = workflow.name;
+    document.getElementById('workflowDesc').textContent = workflow.description;
+
+    const decisionsContainer = document.getElementById('phase2-decisions');
+    decisionsContainer.innerHTML = '';
+    currentDecisions = {};
+
+    let allDecisions = [];
+    workflow.phases.forEach(phase => {
+        if (phase.decisionPoints) {
+            allDecisions = allDecisions.concat(phase.decisionPoints);
+        }
+    });
+
+    allDecisions.forEach((decision, idx) => {
+        const div = document.createElement('div');
+        div.style.marginBottom = '12px';
+        
+        const label = document.createElement('label');
+        label.textContent = decision.question;
+        label.style.display = 'block';
+        label.style.marginBottom = '4px';
+        label.style.fontWeight = 'bold';
+        
+        const select = document.createElement('select');
+        select.dataset.decision = decision.id;
+        select.style.width = '100%';
+        select.style.padding = '8px';
+        
+        decision.options.forEach(option => {
+            const opt = document.createElement('option');
+            opt.value = option;
+            opt.textContent = option;
+            select.appendChild(opt);
+        });
+        
+        select.addEventListener('change', (e) => {
+            currentDecisions[decision.id] = e.target.value;
+        });
+        
+        div.appendChild(label);
+        div.appendChild(select);
+        decisionsContainer.appendChild(div);
+    });
+}
+
 async function startOrchestration() {
-    console.log('🚀 startOrchestration called');
-    
     if (!currentWorkflow) {
-        alert('No workflow selected. Please analyze an objective first.');
+        alert('Please analyze an objective first');
         return;
     }
 
-    const objective = document.getElementById('agencyObjective').value;
-    console.log('📝 Objective:', objective);
-    console.log('🔄 Using Workflow:', currentWorkflow.id);
+    document.querySelector('.agency-phase.active')?.classList.remove('active');
+    document.getElementById('phase3-execution').classList.add('active');
 
-    // Collect decisions from dropdowns
-    const decisions = {};
-    document.querySelectorAll('[id^="decision_"]').forEach(select => {
-        const decisionKey = select.id.replace('decision_', '');
-        decisions[decisionKey] = select.value;
-        console.log('📋 Decision:', decisionKey, '=', select.value);
-    });
-    currentDecisions = decisions;
-
-    // Move to phase 3
-    document.getElementById('phase2-recommendation').classList.remove('active');
-    document.getElementById('phase2-recommendation').style.display = 'none';
-    document.getElementById('phase3-progress').classList.add('active');
-    document.getElementById('phase3-progress').style.display = 'block';
-    document.getElementById('orchestration-progress').style.display = 'block';
-
+    const progressBar = document.getElementById('progressBar');
+    const skillCounter = document.getElementById('skillCounter');
+    
     try {
-        console.log('📡 Calling /api/agency/orchestrate...');
         const response = await fetch('/api/agency/orchestrate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 workflowType: currentWorkflow.id,
-                objective: objective,
-                decisions: decisions
+                decisions: currentDecisions
             })
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
+        const totalSkills = currentWorkflow.phases.reduce((acc, p) => acc + p.skills.length, 0);
+        let completed = 0;
 
-        console.log('✅ Connected to SSE stream');
         const reader = response.body.getReader();
-        let skillsCompleted = 0;
-        
-        // Count total skills from workflow
-        const totalSkills = currentWorkflow.phases.reduce((sum, phase) => {
-            return sum + (phase.skills ? phase.skills.length : 0);
-        }, 0);
-        console.log('📊 Total skills to execute:', totalSkills);
+        const decoder = new TextDecoder();
 
         while (true) {
             const { done, value } = await reader.read();
             if (done) {
-                console.log('✨ Stream ended');
+                progressBar.style.width = '100%';
+                showPhase4();
                 break;
             }
 
-            const text = new TextDecoder().decode(value);
-            const lines = text.split('\n');
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
 
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
                     try {
-                        const event = JSON.parse(line.slice(6));
-                        console.log('📨 Event:', event.type);
-
+                        const event = JSON.parse(line.substring(6));
                         if (event.type === 'skill_complete') {
-                            skillsCompleted++;
-                            const progress = Math.round((skillsCompleted / totalSkills) * 100);
-                            document.getElementById('progress-bar').style.width = progress + '%';
-                            document.getElementById('progress-text').textContent =
-                                skillsCompleted + '/' + totalSkills + ' skills completed';
-                            console.log('✅ Skill complete:', skillsCompleted, '/', totalSkills);
-                        } else if (event.type === 'complete') {
-                            console.log('🎉 Orchestration complete');
-                            showCompletion(event.context, totalSkills);
-                        } else if (event.type === 'error') {
-                            console.error('❌ Error:', event.error);
-                            alert('Error: ' + event.error);
-                            resetAgency();
+                            completed++;
+                            const percent = (completed / totalSkills) * 100;
+                            progressBar.style.width = percent + '%';
+                            skillCounter.textContent = `${completed}/${totalSkills} skills completed`;
                         }
-                    } catch (e) {
-                        // Skip invalid JSON
-                    }
+                    } catch (e) {}
                 }
             }
         }
     } catch (error) {
-        console.error('❌ Orchestration error:', error);
-        alert('Error starting orchestration: ' + error.message);
-        resetAgency();
+        console.error('Error orchestrating workflow:', error);
     }
 }
 
-function showCompletion(context, totalSkills) {
-    console.log('🎉 showCompletion called');
+function showPhase4() {
+    document.querySelector('.agency-phase.active')?.classList.remove('active');
+    document.getElementById('phase4-completion').classList.add('active');
     
-    // Move to phase 4
-    document.getElementById('phase3-progress').classList.remove('active');
-    document.getElementById('phase3-progress').style.display = 'none';
-    document.getElementById('phase4-complete').classList.add('active');
-    document.getElementById('phase4-complete').style.display = 'block';
-
-    document.getElementById('orchestration-progress').style.display = 'none';
-    document.getElementById('orchestration-complete').style.display = 'block';
-
-    // Build completion message
-    const workflowName = currentWorkflow?.name || 'Workflow';
-    const successMessage = `✅ ${workflowName} executed successfully!\n\nYour infrastructure is now ready for development.`;
-    document.getElementById('completion-message').textContent = successMessage;
-
-    // Build detailed summary
-    const details = document.getElementById('completion-details');
-    let html = '<h4 style="color: var(--text); margin: 0 0 15px 0; font-size: 14px;">📊 Execution Summary</h4>';
-    
-    html += '<p style="color: var(--text-muted); margin: 0 0 10px 0; font-size: 13px;"><strong style="color: var(--text);">Workflow:</strong> ' + (currentWorkflow?.name || 'N/A') + '</p>';
-    html += '<p style="color: var(--text-muted); margin: 0 0 10px 0; font-size: 13px;"><strong style="color: var(--text);">Complexity:</strong> ' + (currentWorkflow?.complexity || 'N/A') + '</p>';
-    html += '<p style="color: var(--text-muted); margin: 0 0 10px 0; font-size: 13px;"><strong style="color: var(--text);">Estimated Time:</strong> ' + (currentWorkflow?.estimatedTime || 'N/A') + '</p>';
-    html += '<p style="color: var(--text-muted); margin: 0 0 10px 0; font-size: 13px;"><strong style="color: var(--text);">Total Skills:</strong> ' + (totalSkills || 0) + '</p>';
-    html += '<p style="color: var(--text-muted); margin: 0 0 15px 0; font-size: 13px;"><strong style="color: var(--text);">Status:</strong> <span style="color: var(--success);">✓ Complete</span></p>';
-    
-    // Show phases completed
-    if (currentWorkflow?.phases) {
-        html += '<p style="color: var(--text-muted); margin: 0 0 10px 0; font-size: 12px;"><strong style="color: var(--text);">Phases Completed:</strong></p>';
-        html += '<ul style="margin: 5px 0 0 20px; padding: 0; list-style: none; color: var(--text-muted); font-size: 12px;">';
-        currentWorkflow.phases.forEach((phase, idx) => {
-            html += '<li style="margin: 4px 0; color: var(--success);">✓ ' + phase.phase + '</li>';
-        });
-        html += '</ul>';
+    // Show workflow summary
+    if (currentWorkflow) {
+        const summary = document.querySelector('.completion-summary');
+        const phasesList = currentWorkflow.phases.map((p, i) => 
+            `<li>✅ ${i + 1}. ${p.name}</li>`
+        ).join('');
+        
+        summary.innerHTML = `
+            <h3>${currentWorkflow.name}</h3>
+            <p>${currentWorkflow.description}</p>
+            <strong>Phases Completed:</strong>
+            <ul>${phasesList}</ul>
+        `;
     }
-    
-    // Show decisions made
-    if (Object.keys(currentDecisions).length > 0) {
-        html += '<p style="color: var(--text-muted); margin: 15px 0 10px 0; font-size: 12px;"><strong style="color: var(--text);">Decisions Applied:</strong></p>';
-        html += '<ul style="margin: 5px 0 0 20px; padding: 0; list-style: none; color: var(--text-muted); font-size: 12px;">';
-        for (const [key, value] of Object.entries(currentDecisions)) {
-            html += '<li style="margin: 4px 0;">📌 ' + key + ' → ' + value + '</li>';
-        }
-        html += '</ul>';
-    }
-    
-    details.innerHTML = html;
 }
 
 function resetAgency() {
-    console.log('↺ Resetting Agency workflow');
-    
-    // Clear all state
     currentWorkflow = null;
     currentDecisions = {};
     
-    // Reset form
-    document.getElementById('agencyObjective').value = '';
-    
-    // Reset all phases visibility
-    document.getElementById('phase1-objective').classList.add('active');
-    document.getElementById('phase1-objective').style.display = 'block';
-    
-    document.getElementById('phase2-recommendation').classList.remove('active');
-    document.getElementById('phase2-recommendation').style.display = 'none';
-    document.getElementById('workflow-recommendation').style.display = 'none';
-    
-    document.getElementById('phase3-progress').classList.remove('active');
-    document.getElementById('phase3-progress').style.display = 'none';
-    document.getElementById('orchestration-progress').style.display = 'none';
-    
-    document.getElementById('phase4-complete').classList.remove('active');
-    document.getElementById('phase4-complete').style.display = 'none';
-    document.getElementById('orchestration-complete').style.display = 'none';
-    
-    // Reset progress bar
-    document.getElementById('progress-bar').style.width = '0%';
-    document.getElementById('progress-text').textContent = '0/0 skills completed';
+    document.querySelector('.agency-phase.active')?.classList.remove('active');
+    document.getElementById('phase1-input').classList.add('active');
+    document.getElementById('objective').value = '';
 }

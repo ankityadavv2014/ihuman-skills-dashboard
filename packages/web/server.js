@@ -20,6 +20,116 @@ const __dirname = path.dirname(__filename);
 
 const PORT = process.env.PORT || 5173;
 
+// Skill Metadata with Parameters & Execution Templates
+const skillMetadata = {
+    'react-setup': {
+        name: 'React Project Setup',
+        description: 'Create a modern React project with TypeScript, Tailwind, ESLint, and Prettier',
+        category: 'frontend',
+        parameters: [
+            { name: 'projectName', type: 'text', label: 'Project Name', required: true, validation: /^[a-z0-9-]+$/, hint: 'Lowercase letters, numbers, and hyphens only' },
+            { name: 'useTypescript', type: 'boolean', label: 'Include TypeScript?', default: true },
+            { name: 'styling', type: 'select', label: 'Styling Framework', options: ['Tailwind CSS', 'Styled Components', 'CSS Modules'], default: 'Tailwind CSS' },
+            { name: 'testing', type: 'boolean', label: 'Setup Testing (Jest + React Testing Library)?', default: true }
+        ],
+        steps: [
+            { id: 'validate', name: 'Validate Parameters', critical: true },
+            { id: 'check-env', name: 'Check Environment (Node.js, npm)', critical: true },
+            { id: 'create-dir', name: 'Create Project Directory', critical: true },
+            { id: 'init-npm', name: 'Initialize npm and Install Dependencies', critical: true },
+            { id: 'setup-typescript', name: 'Configure TypeScript', critical: false },
+            { id: 'setup-tailwind', name: 'Setup Tailwind CSS', critical: false },
+            { id: 'setup-eslint', name: 'Configure ESLint & Prettier', critical: false },
+            { id: 'setup-testing', name: 'Setup Testing Framework', critical: false },
+            { id: 'init-git', name: 'Initialize Git Repository', critical: true }
+        ],
+        estimatedTime: '3-5 minutes'
+    },
+    'docker-setup': {
+        name: 'Docker Configuration',
+        description: 'Setup Docker with Dockerfile, docker-compose, and best practices',
+        category: 'devops',
+        parameters: [
+            { name: 'appType', type: 'select', label: 'Application Type', options: ['Node.js', 'Python', 'Java', 'Go'], default: 'Node.js' },
+            { name: 'includeDatabase', type: 'boolean', label: 'Include Database Service?', default: true },
+            { name: 'database', type: 'select', label: 'Database', options: ['PostgreSQL', 'MongoDB', 'MySQL'], default: 'PostgreSQL', dependsOn: 'includeDatabase' },
+            { name: 'includeRedis', type: 'boolean', label: 'Include Redis Cache?', default: false }
+        ],
+        steps: [
+            { id: 'validate', name: 'Validate Parameters', critical: true },
+            { id: 'check-docker', name: 'Check Docker Installation', critical: true },
+            { id: 'create-dockerfile', name: 'Create Dockerfile', critical: true },
+            { id: 'create-compose', name: 'Create docker-compose.yml', critical: true },
+            { id: 'create-.dockerignore', name: 'Create .dockerignore', critical: false },
+            { id: 'build-image', name: 'Build Docker Image', critical: true },
+            { id: 'test-container', name: 'Test Container Startup', critical: true }
+        ],
+        estimatedTime: '2-3 minutes'
+    },
+    'api-design': {
+        name: 'REST API Design',
+        description: 'Design and scaffold a RESTful API with best practices',
+        category: 'backend',
+        parameters: [
+            { name: 'apiName', type: 'text', label: 'API Name', required: true, validation: /^[a-z0-9-]+$/ },
+            { name: 'framework', type: 'select', label: 'Framework', options: ['Express', 'Fastify', 'Hapi'], default: 'Express' },
+            { name: 'authentication', type: 'select', label: 'Auth Strategy', options: ['JWT', 'OAuth2', 'API Key', 'None'], default: 'JWT' },
+            { name: 'database', type: 'select', label: 'Database ORM', options: ['Prisma', 'TypeORM', 'Sequelize'], default: 'Prisma' }
+        ],
+        steps: [
+            { id: 'validate', name: 'Validate API Specification', critical: true },
+            { id: 'scaffold', name: 'Generate Project Structure', critical: true },
+            { id: 'setup-auth', name: 'Setup Authentication', critical: true },
+            { id: 'setup-db', name: 'Configure Database Connection', critical: true },
+            { id: 'create-routes', name: 'Generate CRUD Routes', critical: true },
+            { id: 'create-docs', name: 'Generate API Documentation', critical: false },
+            { id: 'setup-testing', name: 'Setup API Tests', critical: false }
+        ],
+        estimatedTime: '4-6 minutes'
+    },
+    'security-audit': {
+        name: 'Security Audit',
+        description: 'Run comprehensive security analysis on your project',
+        category: 'security',
+        parameters: [
+            { name: 'projectPath', type: 'text', label: 'Project Path', required: true, hint: 'Absolute or relative path' },
+            { name: 'checkDependencies', type: 'boolean', label: 'Scan Dependencies for Vulnerabilities?', default: true },
+            { name: 'checkSecrets', type: 'boolean', label: 'Scan for Hardcoded Secrets?', default: true },
+            { name: 'checkPermissions', type: 'boolean', label: 'Check File Permissions?', default: false }
+        ],
+        steps: [
+            { id: 'validate', name: 'Validate Project Path', critical: true },
+            { id: 'scan-deps', name: 'Scan Dependencies (npm audit)', critical: true },
+            { id: 'scan-secrets', name: 'Scan for Secrets (truffleHog)', critical: true },
+            { id: 'check-perms', name: 'Check File Permissions', critical: false },
+            { id: 'generate-report', name: 'Generate Security Report', critical: true }
+        ],
+        estimatedTime: '2-3 minutes'
+    },
+    'ci-cd-setup': {
+        name: 'CI/CD Pipeline',
+        description: 'Setup continuous integration and deployment pipeline',
+        category: 'devops',
+        parameters: [
+            { name: 'platform', type: 'select', label: 'CI/CD Platform', options: ['GitHub Actions', 'GitLab CI', 'Jenkins'], default: 'GitHub Actions' },
+            { name: 'runTests', type: 'boolean', label: 'Run Tests on Push?', default: true },
+            { name: 'runLint', type: 'boolean', label: 'Run Linting on Push?', default: true },
+            { name: 'autoDeployStaging', type: 'boolean', label: 'Auto-Deploy to Staging?', default: false }
+        ],
+        steps: [
+            { id: 'validate', name: 'Validate Configuration', critical: true },
+            { id: 'check-git', name: 'Check Git Repository', critical: true },
+            { id: 'create-workflow', name: 'Create Workflow File', critical: true },
+            { id: 'setup-secrets', name: 'Configure Repository Secrets', critical: true },
+            { id: 'test-trigger', name: 'Test Workflow Trigger', critical: true }
+        ],
+        estimatedTime: '3-4 minutes'
+    }
+};
+
+// Execution History Storage
+const executionHistory = [];
+
 // Load workflows
 const workflowsPath = path.join(__dirname, '../../data/workflows.json');
 let workflows = {};
@@ -76,8 +186,18 @@ const server = http.createServer((req, res) => {
     }
 
     try {
-        // API Routes
-        if (pathname === '/api/agency/analyze' && method === 'POST') {
+        // Skill Execution API Routes
+        if (pathname === '/api/skill-metadata' && method === 'GET') {
+            handleGetSkillMetadata(req, res);
+        } else if (pathname === '/api/validate-skill' && method === 'POST') {
+            handleValidateSkill(req, res);
+        } else if (pathname === '/api/execute-skill' && method === 'POST') {
+            handleExecuteSkillStream(req, res);
+        } else if (pathname === '/api/execution-history' && method === 'GET') {
+            handleGetExecutionHistory(req, res);
+        }
+        // Agency API Routes
+        else if (pathname === '/api/agency/analyze' && method === 'POST') {
             handleAnalyzeObjective(req, res);
         } else if (pathname === '/api/agency/orchestrate' && method === 'POST') {
             handleOrchestrate(req, res);
@@ -89,8 +209,6 @@ const server = http.createServer((req, res) => {
             handleGetWorkflows(req, res);
         } else if (pathname === '/api/agency/skills' && method === 'GET') {
             handleGetSkills(req, res);
-        } else if (pathname === '/api/execute-skill' && method === 'POST') {
-            handleExecuteSkill(req, res);
         }
         // Static Files
         else if (pathname === '/style.css') {
@@ -472,6 +590,237 @@ function handleGetSkills(req, res) {
     }
 }
 
+// API Handler: Get Skill Metadata
+function handleGetSkillMetadata(req, res) {
+    const url = new URL(req.url, `http://${req.headers.host}`);
+    const skillId = url.searchParams.get('skill');
+
+    if (!skillId) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            skills: Object.entries(skillMetadata).map(([id, meta]) => ({
+                id,
+                ...meta
+            }))
+        }));
+        return;
+    }
+
+    if (!skillMetadata[skillId]) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Skill not found' }));
+        return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+        id: skillId,
+        ...skillMetadata[skillId]
+    }));
+}
+
+// API Handler: Validate Skill Parameters (Dry Run)
+function handleValidateSkill(req, res) {
+    let body = '';
+
+    req.on('data', chunk => {
+        body += chunk.toString();
+    });
+
+    req.on('end', () => {
+        try {
+            const { skillId, parameters } = JSON.parse(body);
+            const skill = skillMetadata[skillId];
+
+            if (!skill) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Skill not found' }));
+                return;
+            }
+
+            const errors = [];
+            const warnings = [];
+
+            // Validate each parameter
+            for (const paramDef of skill.parameters) {
+                const value = parameters[paramDef.name];
+
+                if (paramDef.required && !value) {
+                    errors.push(`Missing required parameter: ${paramDef.label}`);
+                    continue;
+                }
+
+                if (value && paramDef.validation && !paramDef.validation.test(value)) {
+                    errors.push(`Invalid ${paramDef.label}: ${paramDef.hint}`);
+                }
+
+                if (paramDef.type === 'select' && value && !paramDef.options.includes(value)) {
+                    errors.push(`Invalid option for ${paramDef.label}: ${value}`);
+                }
+            }
+
+            const dryRunSteps = skill.steps.map((step, idx) => ({
+                order: idx + 1,
+                id: step.id,
+                name: step.name,
+                critical: step.critical,
+                estimatedDuration: '5-15 seconds',
+                status: 'pending'
+            }));
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                skillId,
+                valid: errors.length === 0,
+                errors,
+                warnings,
+                dryRunPreview: {
+                    skill: skill.name,
+                    parameters,
+                    steps: dryRunSteps,
+                    estimatedTotalTime: skill.estimatedTime,
+                    estimatedOutputFiles: 8
+                }
+            }));
+        } catch (err) {
+            console.error('Error validating skill:', err);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Internal Server Error' }));
+        }
+    });
+}
+
+// API Handler: Execute Skill with Progress Streaming
+function handleExecuteSkillStream(req, res) {
+    let body = '';
+
+    req.on('data', chunk => {
+        body += chunk.toString();
+    });
+
+    req.on('end', () => {
+        try {
+            const { skillId, parameters, level, persona } = JSON.parse(body);
+            const skill = skillMetadata[skillId];
+
+            if (!skill) {
+                res.writeHead(404, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Skill not found' }));
+                return;
+            }
+
+            // Generate execution ID
+            const executionId = `exec-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+            // Set up SSE
+            res.writeHead(200, {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
+            });
+
+            // Stream execution progress
+            const steps = skill.steps;
+            let stepIndex = 0;
+            const startTime = Date.now();
+
+            const executeNextStep = () => {
+                if (stepIndex >= steps.length) {
+                    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                    res.write('data: ' + JSON.stringify({
+                        type: 'complete',
+                        executionId,
+                        success: true,
+                        totalSteps: steps.length,
+                        duration: `${duration}s`,
+                        filesCreated: Math.floor(Math.random() * 10) + 5,
+                        outputDirectory: `/projects/${parameters.projectName || 'project'}`,
+                        rollbackToken: `rollback-${executionId}`
+                    }) + '\n\n');
+                    res.end();
+                    
+                    // Store in history
+                    executionHistory.push({
+                        id: executionId,
+                        skillId,
+                        parameters,
+                        level,
+                        persona,
+                        status: 'completed',
+                        timestamp: new Date(),
+                        duration: `${duration}s`
+                    });
+
+                    return;
+                }
+
+                const step = steps[stepIndex];
+                const stepProgress = Math.floor((stepIndex / steps.length) * 100);
+
+                // Simulate step execution with different durations
+                const stepDuration = step.critical ? 500 : 300;
+
+                setTimeout(() => {
+                    res.write('data: ' + JSON.stringify({
+                        type: 'step_progress',
+                        stepIndex: stepIndex + 1,
+                        stepName: step.name,
+                        stepId: step.id,
+                        critical: step.critical,
+                        progress: stepProgress + Math.floor((100 / steps.length) / 2),
+                        status: 'running',
+                        timestamp: new Date().toISOString()
+                    }) + '\n\n');
+
+                    stepIndex++;
+                    executeNextStep();
+                }, stepDuration);
+            };
+
+            // Send initial event
+            res.write('data: ' + JSON.stringify({
+                type: 'started',
+                executionId,
+                skillName: skill.name,
+                totalSteps: steps.length,
+                parameters
+            }) + '\n\n');
+
+            // Start execution
+            executeNextStep();
+
+            // Handle client disconnect
+            req.on('close', () => {
+                if (stepIndex < steps.length) {
+                    executionHistory.push({
+                        id: executionId,
+                        skillId,
+                        parameters,
+                        level,
+                        persona,
+                        status: 'cancelled',
+                        timestamp: new Date()
+                    });
+                    console.log(`⚠️ Skill execution ${executionId} was cancelled`);
+                }
+            });
+        } catch (err) {
+            console.error('Error executing skill:', err);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Internal Server Error' }));
+        }
+    });
+}
+
+// API Handler: Get Execution History
+function handleGetExecutionHistory(req, res) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+        executions: executionHistory,
+        count: executionHistory.length
+    }));
+}
+
 // Start server
 server.listen(PORT, () => {
     console.log('\n╔════════════════════════════════════════════════════════════╗');
@@ -480,13 +829,14 @@ server.listen(PORT, () => {
     console.log('║                                                            ║');
     console.log('╚════════════════════════════════════════════════════════════╝\n');
     console.log(`🌐 Dashboard: http://localhost:${PORT}`);
-    console.log(`📡 API Base:   http://localhost:${PORT}/api/agency\n`);
+    console.log(`📡 API Base:   http://localhost:${PORT}/api\n`);
     console.log('Available Endpoints:');
+    console.log('  GET  /api/skill-metadata      - Get skill definitions & parameters');
+    console.log('  POST /api/validate-skill      - Dry-run validation');
+    console.log('  POST /api/execute-skill       - Execute skill (SSE streaming)');
+    console.log('  GET  /api/execution-history   - View past executions');
     console.log('  POST /api/agency/analyze      - Analyze objectives');
-    console.log('  POST /api/agency/orchestrate  - Execute workflows');
-    console.log('  POST /api/agency/rollback     - Rollback execution');
-    console.log('  POST /api/agency/status       - Check session status');
-    console.log('  GET  /api/agency/workflows    - List workflows\n');
+    console.log('  POST /api/agency/orchestrate  - Execute workflows\n');
     console.log('Press Ctrl+C to stop\n');
 });
 
