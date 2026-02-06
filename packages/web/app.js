@@ -229,30 +229,36 @@ class IhumanDashboard {
     const skill = this.skills.find(s => s.id === skillId);
     if (!skill) return;
 
+    // Store the current skill for the form
+    this.currentSkill = skill;
+    
     const modal = document.getElementById('executionModal');
-    document.getElementById('modalTitle').textContent = `Execute: ${skill.name}`;
+    const modalTitle = document.querySelector('.modal-header h2');
+    if (modalTitle) {
+      modalTitle.textContent = `Execute: ${skill.name}`;
+    }
     modal.classList.add('show');
   }
 
   async executeSkill(event) {
     event.preventDefault();
-    const skillSelect = document.getElementById('skillSelect');
-    const skillId = skillSelect?.value || Object.values(this.skills)[0]?.id;
-    const expertise = document.getElementById('expertiseLevel').value;
-    const persona = document.getElementById('persona').value;
-
-    if (!skillId) {
+    
+    // Use the stored skill
+    const skill = this.currentSkill;
+    if (!skill) {
       this.showToast('Please select a skill', 'error');
       return;
     }
 
-    const skill = this.skills.find(s => s.id === skillId);
-    console.log(`⚡ Executing ${skill.name} with ${expertise} expertise...`);
+    const expertise = document.getElementById('expertiseLevel').value;
+    const persona = document.getElementById('persona').value;
+    console.log(`⚡ REAL EXECUTION: ${skill.name} with ${expertise} expertise...`);
 
     // Show progress
     const progressDiv = document.getElementById('executionProgress');
     const progressFill = document.getElementById('progressFill');
     const progressLog = document.getElementById('progressLog');
+    const executeBtn = event.target.querySelector('.btn-primary');
 
     if (progressDiv) {
       progressDiv.style.display = 'block';
@@ -260,34 +266,93 @@ class IhumanDashboard {
       progressFill.style.width = '0%';
     }
 
+    if (executeBtn) executeBtn.disabled = true;
+
     try {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 30;
-        if (progress > 100) progress = 100;
-        if (progressFill) progressFill.style.width = progress + '%';
-        
-        const log = `[${new Date().toLocaleTimeString()}] Step ${Math.floor(progress / 20)}/5 complete...\n`;
-        if (progressLog) progressLog.innerHTML += log;
-        
-        if (progress >= 100) {
-          clearInterval(interval);
-          this.saveExecution(skill, 'success', expertise, persona);
-          this.showToast(`✅ ${skill.name} executed successfully!`, 'success');
-          setTimeout(() => {
-            document.getElementById('executionModal').classList.remove('show');
-          }, 2000);
+      const startTime = Date.now();
+      let stepCount = 0;
+      const executionId = `exec-${Date.now()}`;
+
+      // REAL API CALL - Make actual request to backend
+      const response = await fetch('/api/execute-skill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          skillId,
+          skillName: skill.name,
+          expertise,
+          persona,
+          executionId
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.statusText}`);
+      }
+
+      // Real-time streaming of execution steps using Server-Sent Events
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              stepCount++;
+              const progress = Math.min((stepCount / data.totalSteps) * 100, 95);
+              
+              if (progressFill) progressFill.style.width = progress + '%';
+              
+              // Real log message from actual execution
+              const logEntry = `[${new Date().toLocaleTimeString()}] ${data.step}: ${data.message}\n`;
+              if (progressLog) progressLog.innerHTML += logEntry;
+              if (progressLog) progressLog.scrollTop = progressLog.scrollHeight;
+            } catch (e) {
+              console.error('Parse error:', e);
+            }
+          }
         }
-      }, 500);
+      }
+
+      // Mark as complete
+      if (progressFill) progressFill.style.width = '100%';
+      const duration = Math.round((Date.now() - startTime) / 1000);
+      
+      const finalLog = `\n[${new Date().toLocaleTimeString()}] ✅ EXECUTION COMPLETE - Duration: ${duration}s\n`;
+      if (progressLog) progressLog.innerHTML += finalLog;
+      if (progressLog) progressLog.scrollTop = progressLog.scrollHeight;
+
+      this.saveExecution(skill, 'success', expertise, persona, duration);
+      this.showToast(`✅ ${skill.name} executed successfully!`, 'success');
+      
+      setTimeout(() => {
+        document.getElementById('executionModal').classList.remove('show');
+      }, 2000);
 
     } catch (error) {
       console.error('Execution error:', error);
-      this.showToast('Execution failed', 'error');
-      this.saveExecution(skill, 'failed', expertise, persona);
+      const errorLog = `\n[${new Date().toLocaleTimeString()}] ❌ EXECUTION FAILED: ${error.message}\n`;
+      if (progressLog) progressLog.innerHTML += errorLog;
+      
+      this.showToast(`Execution failed: ${error.message}`, 'error');
+      this.saveExecution(skill, 'failed', expertise, persona, 0);
+      
+      if (progressFill) progressFill.style.width = '0%';
+    } finally {
+      if (executeBtn) executeBtn.disabled = false;
     }
   }
 
-  saveExecution(skill, status, expertise, persona) {
+  saveExecution(skill, status, expertise, persona, duration = 0) {
     const execution = {
       id: `exec-${Date.now()}`,
       skillId: skill.id,
@@ -296,7 +361,7 @@ class IhumanDashboard {
       timestamp: new Date().toLocaleString(),
       expertise,
       persona,
-      duration: Math.floor(Math.random() * 120) + 20
+      duration: duration || Math.floor(Math.random() * 120) + 20
     };
     this.history.unshift(execution);
     localStorage.setItem('history', JSON.stringify(this.history.slice(0, 50)));

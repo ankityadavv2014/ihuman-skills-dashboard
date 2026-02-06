@@ -1,0 +1,21 @@
+✅ Loaded 5 workflows
+
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║       🚀 ihuman - Skill Execution Platform Started 🚀    ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
+🌐 Dashboard: http://localhost:5173
+📡 API Base:   http://localhost:5173/api
+
+Available Endpoints:
+  GET  /api/skill-metadata      - Get skill definitions & parameters
+  POST /api/validate-skill      - Dry-run validation
+  POST /api/execute-skill       - Execute skill (SSE streaming)
+  GET  /api/execution-history   - View past executions
+  POST /api/agency/analyze      - Analyze objectives
+  POST /api/agency/orchestrate  - Execute workflows
+
+Press Ctrl+C to stop
+
