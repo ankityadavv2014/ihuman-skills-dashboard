@@ -7,10 +7,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D16-brightgreen)](https://nodejs.org)
 [![GitHub](https://img.shields.io/badge/GitHub-ankityadavv2014-blue)](https://github.com/ankityadavv2014)
+[![Phase 1 Complete ✅](https://img.shields.io/badge/Phase%201-Complete-brightgreen)](PHASE1_COMPLETION_REPORT.md)
 
 [**Try Demo**](#quick-start) • [**Documentation**](#documentation) • [**Features**](#features) • [**API Docs**](#api-reference)
 
 </div>
+
+> **📢 Phase 1 Complete!** Enhanced dashboard UI, API documentation, and core features now live. See [PHASE1_COMPLETION_REPORT.md](PHASE1_COMPLETION_REPORT.md) for details.
 
 ---
 
