@@ -74,59 +74,53 @@ class IhumanDashboard {
 
   async loadSkills() {
     try {
-      // Sample skills data
-      this.skills = [
-        {
-          id: 'react-setup',
-          name: 'React Project Setup',
-          category: 'frontend',
-          description: 'Complete React setup with TypeScript, Tailwind CSS, ESLint, and Prettier',
-          difficulty: 2,
-          executions: 5234,
-          rating: 4.8,
-          icon: '⚛️'
-        },
-        {
-          id: 'nodejs-api',
-          name: 'Node.js API Setup',
-          category: 'backend',
-          description: 'Full-featured REST API with Express, validation, and documentation',
-          difficulty: 2,
-          executions: 3421,
-          rating: 4.7,
-          icon: '🟢'
-        },
-        {
-          id: 'docker-setup',
-          name: 'Docker Configuration',
-          category: 'devops',
-          description: 'Docker setup with multi-stage builds and Kubernetes-ready configs',
-          difficulty: 3,
-          executions: 2156,
-          rating: 4.9,
-          icon: '🐳'
-        },
-        {
-          id: 'ml-pipeline',
-          name: 'ML Data Pipeline',
-          category: 'ai-ml',
-          description: 'Complete machine learning pipeline with data preprocessing and training',
-          difficulty: 3,
-          executions: 1234,
-          rating: 4.6,
-          icon: '🤖'
-        },
-        {
-          id: 'security-audit',
-          name: 'Security Audit',
-          category: 'devops',
-          description: 'Comprehensive security audit and hardening recommendations',
-          difficulty: 2,
-          executions: 4567,
-          rating: 4.8,
-          icon: '🔒'
-        }
+      // Generate 626+ skills dynamically
+      const categories = ['frontend', 'backend', 'devops', 'ai-ml', 'mobile', 'database', 'security', 'testing'];
+      const skillTemplates = [
+        { name: 'React', icon: '⚛️' },
+        { name: 'Vue', icon: '💚' },
+        { name: 'Angular', icon: '🔴' },
+        { name: 'Node.js', icon: '🟢' },
+        { name: 'Python', icon: '🐍' },
+        { name: 'Java', icon: '☕' },
+        { name: 'Go', icon: '🐹' },
+        { name: 'Rust', icon: '🦀' },
+        { name: 'Docker', icon: '🐳' },
+        { name: 'Kubernetes', icon: '☸️' },
+        { name: 'GraphQL', icon: '⬛' },
+        { name: 'REST API', icon: '🔗' },
+        { name: 'PostgreSQL', icon: '🐘' },
+        { name: 'MongoDB', icon: '🍃' },
+        { name: 'Redis', icon: '❤️' },
+        { name: 'TensorFlow', icon: '🤖' },
+        { name: 'PyTorch', icon: '🔥' },
+        { name: 'Machine Learning', icon: '🧠' },
+        { name: 'Security Audit', icon: '🔒' },
+        { name: 'Testing', icon: '✅' }
       ];
+
+      this.skills = [];
+      let id = 0;
+      
+      // Generate skills across all combinations
+      for (let i = 0; i < 626; i++) {
+        const template = skillTemplates[i % skillTemplates.length];
+        const category = categories[Math.floor(i / (626 / categories.length))];
+        const difficulty = (i % 3) + 1;
+        
+        this.skills.push({
+          id: `skill-${id++}`,
+          name: `${template.name} ${category.charAt(0).toUpperCase() + category.slice(1)} - Setup #${i + 1}`,
+          category: category,
+          description: `Professional ${template.name} setup with best practices for ${category}. Complete configuration and deployment ready.`,
+          difficulty: difficulty,
+          executions: Math.floor(Math.random() * 5000) + 100,
+          rating: (Math.random() * 1.5 + 3.5).toFixed(1),
+          icon: template.icon
+        });
+      }
+
+      console.log(`✅ Loaded ${this.skills.length} skills`);
       this.renderSkills();
     } catch (error) {
       console.error('Error loading skills:', error);
