@@ -258,7 +258,7 @@ class IhumanDashboard {
     const progressDiv = document.getElementById('executionProgress');
     const progressFill = document.getElementById('progressFill');
     const progressLog = document.getElementById('progressLog');
-    const executeBtn = event.target.querySelector('.btn-primary');
+    const executeBtn = document.querySelector('#executionForm .btn-primary');
 
     if (progressDiv) {
       progressDiv.style.display = 'block';
@@ -308,16 +308,23 @@ class IhumanDashboard {
             try {
               const data = JSON.parse(line.slice(6));
               stepCount++;
-              const progress = Math.min((stepCount / data.totalSteps) * 100, 95);
+              
+              // Calculate progress (up to 95% before completion)
+              const totalMessages = 15; // Approximate based on execution steps
+              const progress = Math.min((stepCount / totalMessages) * 100, 95);
               
               if (progressFill) progressFill.style.width = progress + '%';
               
               // Real log message from actual execution
               const logEntry = `[${new Date().toLocaleTimeString()}] ${data.step}: ${data.message}\n`;
-              if (progressLog) progressLog.innerHTML += logEntry;
-              if (progressLog) progressLog.scrollTop = progressLog.scrollHeight;
+              if (progressLog) {
+                progressLog.innerHTML += logEntry;
+                progressLog.scrollTop = progressLog.scrollHeight;
+              }
+              
+              console.log(`Step ${stepCount}: ${data.step} - ${data.message}`);
             } catch (e) {
-              console.error('Parse error:', e);
+              console.error('Parse error:', e, 'line:', line);
             }
           }
         }
